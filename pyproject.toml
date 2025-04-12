@@ -1,0 +1,26 @@
+[project]
+name = "house-plan-parser"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pdf2image",
+    "transformers",
+    "Pillow",
+    "matplotlib",
+    "pytesseract",
+    "ipython",
+    "pdfplumber",
+    "torch",
+    "protobuf",
+    "sentencepiece",
+    "unstructured",
+    "python-docx",
+    "pandas",
+    "numpy",
+    "opencv-python",
+    "pi_heif",
+    "unstructured-inference",
+    "psutil"
+]
