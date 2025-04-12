@@ -13,7 +13,6 @@ import torch
 import gc
 import psutil
 import time
-from datetime import datetime
 import sys
 import requests
 import re
@@ -307,25 +306,47 @@ class PlumbingDataExtractor:
                                 # Fix double "inch" in dimensions
                                 item["dimensions"] = re.sub(r'inchinch', 'inch', item["dimensions"])
                                 
+                                # Standardize spacing around "inch"
+                                item["dimensions"] = re.sub(r'(\d+)\s*(inch)', r'\1 \2', item["dimensions"])
+                                item["dimensions"] = re.sub(r'(inch)\s*(\d+)', r'\1 \2', item["dimensions"])
+                                
+                                # Handle CD in dimensions
+                                if "CD" in item["dimensions"]:
+                                    item["model_number"] = "CD"
+                                    item["type"] = "fitting"
+                                    item["dimensions"] = item["dimensions"].replace("CD", "").strip()
+                                
                                 # Standardize mounting type format
                                 if item["mounting_type"]:
                                     # Replace ' with ft and " with inch
                                     item["mounting_type"] = item["mounting_type"].replace("'", "ft")
                                     item["mounting_type"] = item["mounting_type"].replace('"', "inch")
                                     
-                                    # Handle multiple mounting types (like in CD pipe)
+                                    # Standardize spacing in mounting type
+                                    item["mounting_type"] = re.sub(r'(\d+)\s*(ft|inch)', r'\1 \2', item["mounting_type"])
+                                    item["mounting_type"] = re.sub(r'(ft|inch)\s*(\d+)', r'\1 \2', item["mounting_type"])
+                                    
+                                    # Handle multiple mounting types
                                     if "," in item["mounting_type"]:
-                                        # Split into multiple items
                                         mount_types = [m.strip() for m in item["mounting_type"].split(",")]
                                         for mount_type in mount_types[1:]:
-                                            # Create a new item for each additional mounting type
                                             new_item = item.copy()
                                             new_item["mounting_type"] = mount_type
                                             items.append(new_item)
-                                        # Keep the first mounting type for the original item
                                         item["mounting_type"] = mount_types[0]
                                 
-                                items.append(item)
+                                # Create a unique key for deduplication
+                                dedup_key = (
+                                    item["type"],
+                                    item["quantity"],
+                                    item["model_number"],
+                                    item["dimensions"],
+                                    item["mounting_type"]
+                                )
+                                
+                                # Add the item if it's not a duplicate
+                                if dedup_key not in {(i["type"], i["quantity"], i["model_number"], i["dimensions"], i["mounting_type"]) for i in items}:
+                                    items.append(item)
                                 
                             except Exception as e:
                                 print(f"Error processing line: {line}")
@@ -357,7 +378,44 @@ class PlumbingDataExtractor:
                     page_data["items"] = all_items
                     return page_data
             
-            page_data["items"] = all_items
+            # Final deduplication and cleanup pass
+            unique_items = []
+            seen_keys = set()
+            for item in all_items:
+                # Fix CD pipes that were incorrectly converted
+                if "CD" in item["dimensions"] or item["model_number"] == "CD":
+                    item["model_number"] = "CD"
+                    item["type"] = "fitting"
+                    item["dimensions"] = item["dimensions"].replace("CD", "").strip()
+                
+                # Fix valve and fitting types
+                if item["model_number"] in ["M7"]:
+                    item["type"] = "valve"
+                elif item["model_number"] == "CD":
+                    item["type"] = "fitting"
+                
+                # Standardize "inches" to "inch"
+                item["dimensions"] = item["dimensions"].replace("inches", "inch")
+                
+                # Fix spacing in mounting type
+                if item["mounting_type"]:
+                    item["mounting_type"] = re.sub(r'(\d+)\s*(ft|inch)', r'\1 \2', item["mounting_type"])
+                    item["mounting_type"] = re.sub(r'(ft|inch)\s*(\d+)', r'\1 \2', item["mounting_type"])
+                
+                # Create deduplication key
+                key = (
+                    item["type"],
+                    item["quantity"],
+                    item["model_number"],
+                    item["dimensions"],
+                    item["mounting_type"]
+                )
+                
+                if key not in seen_keys:
+                    seen_keys.add(key)
+                    unique_items.append(item)
+            
+            page_data["items"] = unique_items
         except Exception as e:
             print(f"Error in LLM processing: {e}")
         
