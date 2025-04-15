@@ -1,106 +1,196 @@
 # House Plan Parser
 
-A tool for extracting and validating plumbing data from house plan PDFs using OCR and LLM-based validation.
+A Python-based tool for extracting and standardizing plumbing information from house plans and construction documents.
 
-## Architecture
+## Features
+
+- Extracts plumbing information from PDF documents
+- Standardizes plumbing item formats
+- Handles various input formats and notations
+- Validates extracted data against predefined rules
+- Supports parallel processing for improved performance
+
+## Architecture Overview
 
 The system is built using a modular architecture with the following components:
 
-### 1. Data Extraction Layer
+### Core Components
 
-- **PDF Processing**: Uses `pdfplumber` and `unstructured` for layout-aware text extraction
-- **OCR Support**: Optional OCR processing using `pytesseract` for scanned documents
-- **Text Chunking**: Splits large documents into manageable chunks for processing
+1. **PDF Processing Module**
 
-### 2. LLM Processing Layer
+   - Uses `pdfplumber` for basic PDF text extraction
+   - Uses `unstructured` for layout-aware text extraction
+   - Supports parallel processing for improved performance
 
-- **LangChain Integration**: Uses LangChain for structured LLM workflows
-- **Validation Chains**: Sequential processing of validation steps
-- **Pydantic Models**: Type-safe data validation and processing
+2. **Extraction Chain**
 
-### 3. Validation Pipeline
+   - Uses LangChain for structured LLM workflows
+   - Processes text in chunks to handle large documents
+   - Extracts and standardizes plumbing information
+   - Handles various input formats and notations
 
-The validation process follows a sequential chain of steps:
+3. **Validation Chain**
+
+   - Validates extracted data against predefined rules
+   - Standardizes model numbers, dimensions, and mounting types
+   - Handles special cases and edge conditions
+   - Ensures consistent output format
+
+4. **Data Models**
+   - Uses Pydantic models for type-safe data validation
+   - Defines standard formats for plumbing items
+   - Enforces validation rules for each field
+   - Handles error cases gracefully
+
+### Workflow
 
 ```mermaid
-graph LR
-    A[Input Item] --> B[Model Number Check]
-    B --> C[Combined Types Check]
-    C --> D[Dimension Formatting]
-    D --> E[Mounting Type Check]
-    E --> F[Quantity Validation]
-    F --> G[Validated Item]
+graph TD
+    A[PDF Document] --> B[PDF Processing]
+    B --> C[Text Extraction]
+    C --> D[Chunk Processing]
+    D --> E[LLM Extraction]
+    E --> F[Data Validation]
+    F --> G[Standardized Output]
+    G --> H[JSON/CSV Files]
+
+    subgraph "PDF Processing"
+    B --> B1[pdfplumber]
+    B --> B2[unstructured]
+    end
+
+    subgraph "Extraction & Validation"
+    E --> E1[Model Number]
+    E --> E2[Dimensions]
+    E --> E3[Mounting Type]
+    E --> E4[Quantity]
+    end
+
+    subgraph "Output Generation"
+    G --> G1[extracted.json]
+    G --> G2[summary.csv]
+    end
 ```
 
-Each validation step:
+### Processing Steps
 
-1. **Model Number Check**: Verifies and corrects reversed model numbers
-2. **Combined Types Check**: Splits items with multiple types
-3. **Dimension Formatting**: Ensures consistent measurement formatting
-4. **Mounting Type Check**: Validates mounting specifications
-5. **Quantity Validation**: Verifies quantity values
-
-### 4. Data Processing Flow
-
-1. **PDF Input**
+1. **PDF Processing**
 
    - Document is loaded and preprocessed
    - Text is extracted using layout-aware methods
-   - Optional OCR processing for scanned documents
+   - Pages are processed in parallel for efficiency
 
 2. **Text Processing**
 
-   - Text is split into chunks
+   - Text is split into manageable chunks
    - Each chunk is processed by the LLM
    - Initial items are extracted and formatted
 
-3. **Validation Pipeline**
+3. **Data Extraction**
 
-   - Each item goes through the validation chain
-   - Multiple validation steps are applied sequentially
-   - Corrections and splits are handled automatically
+   - Model numbers are extracted and standardized
+   - Dimensions are converted to standard format
+   - Mounting types are validated and formatted
+   - Quantities are standardized
 
-4. **Output Generation**
-   - Validated items are deduplicated
-   - Final output is formatted consistently
-   - Results are saved in structured format
+4. **Validation**
 
-## Dependencies
+   - Each field is validated against rules
+   - Special cases are handled
+   - Invalid data is corrected or removed
+   - Duplicates are eliminated
 
-- Python 3.12+
-- PDF Processing: `pdfplumber`, `unstructured`
-- OCR: `pytesseract`, `tesseract-ocr`
-- LLM: `langchain`, `ollama`
-- Data Processing: `pandas`, `numpy`
-- Visualization: `graphviz`
+5. **Output Generation**
+   - Validated items are formatted
+   - Results are saved to JSON and CSV
+   - Summary statistics are generated
 
-## Usage
+## Installation
 
-1. Install dependencies:
+### Prerequisites
+
+- Python 3.12 or higher
+- [uv](https://github.com/astral-sh/uv) (recommended) or pip
+- Git
+
+### Using uv (Recommended)
+
+1. Install uv if you haven't already:
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+2. Clone the repository:
+
+```bash
+git clone https://github.com/yourusername/house_plan_parser.git
+cd house_plan_parser
+```
+
+3. Create and activate a virtual environment:
+
+```bash
+uv venv
+source .venv/bin/activate  # On Unix/macOS
+# or
+.venv\Scripts\activate  # On Windows
+```
+
+4. Install dependencies:
+
+```bash
+uv pip install -r requirements.txt
+```
+
+### Using pip
+
+1. Clone the repository:
+
+```bash
+git clone https://github.com/yourusername/house_plan_parser.git
+cd house_plan_parser
+```
+
+2. Create and activate a virtual environment:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate  # On Unix/macOS
+# or
+.venv\Scripts\activate  # On Windows
+```
+
+3. Install dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-2. Run the extractor:
+### Dependencies
+
+The project uses the following main dependencies:
+
+- `pdfplumber`: For PDF text extraction
+- `unstructured`: For layout-aware text extraction
+- `langchain`: For LLM workflows
+- `pydantic`: For data validation
+- `pandas`: For data processing and CSV output
+
+### Development Setup
+
+For development, install additional dependencies:
 
 ```bash
-python extract_plumbing_data.py
+uv pip install -r requirements-dev.txt
 ```
 
-3. Visualize the validation chain:
+### Configuration
 
-```python
-extractor = PlumbingDataExtractor()
-extractor.visualize_validation_chain()
+The project can be configured through environment variables:
+
+```bash
+export MODEL_NAME="llama3"  # Default LLM model
+export MAX_CHUNK_SIZE=2000  # Maximum text chunk size
+export PARALLEL_PROCESSING=true  # Enable parallel processing
 ```
-
-## Configuration
-
-- Model selection: `model_name` parameter in `PlumbingDataExtractor`
-- Validation steps: Modify `_setup_validation_chains()`
-- Processing parameters: Adjust chunk size and memory limits
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.

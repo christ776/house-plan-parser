@@ -217,14 +217,14 @@ class PDFExtractionChain:
    - Never mix model numbers with dimensions
    - For multiple dimensions, use only the first one
    - Keep "HH" and "CH" as mounting types
-
-Text: {text}
-
+            
+            Text: {text}
+            
 Return ONLY the standardized items in this exact format:
-type|quantity|model_number|dimensions|mounting_type
-
+            type|quantity|model_number|dimensions|mounting_type
+            
 Do not include any explanations or additional text.
-"""
+            """
         )
         
         # Create extraction chain using RunnableSequence
