@@ -10,9 +10,9 @@ A Python-based tool for extracting and standardizing plumbing information from h
 - Validates extracted data against predefined rules
 - Supports parallel processing for improved performance
 
-## Architecture Overview
+## Technical Architecture
 
-The system is built using a modular architecture with the following components:
+The system is built using a modular architecture with the following key components:
 
 ### Core Components
 
@@ -105,6 +105,59 @@ graph TD
    - Results are saved to JSON and CSV
    - Summary statistics are generated
 
+## Workflow Orchestration
+
+The system uses LangGraph for workflow orchestration, providing a structured way to manage the extraction and validation process:
+
+```python
+from langgraph.graph import Graph, StateGraph
+
+# Define workflow states
+class WorkflowState(TypedDict):
+    extraction_result: ExtractionResult
+    validation_result: ValidationResult
+    error: Optional[str]
+
+# Create workflow graph
+workflow = StateGraph(WorkflowState)
+
+# Add nodes
+workflow.add_node("extract", extract_data)
+workflow.add_node("validate", validate_data)
+workflow.add_node("error_handler", handle_error)
+
+# Add edges
+workflow.add_edge("extract", "validate")
+workflow.add_edge("validate", "error_handler")
+```
+
+### Workflow Components
+
+1. **State Management**
+
+   - Uses `TypedDict` for type-safe state management
+   - Tracks extraction results, validation results, and errors
+   - Maintains state throughout the workflow execution
+
+2. **Node Functions**
+
+   - `extract_data`: Handles PDF processing and initial data extraction
+   - `validate_data`: Validates and standardizes extracted data
+   - `error_handler`: Manages error cases and recovery
+
+3. **Edge Logic**
+   - Defines the flow between processing stages
+   - Handles error propagation
+   - Manages state transitions
+
+### Benefits
+
+- Structured workflow management
+- Clear separation of concerns
+- Type-safe state handling
+- Easy error management
+- Extensible architecture
+
 ## Installation
 
 ### Prerequisites
@@ -140,7 +193,7 @@ source .venv/bin/activate  # On Unix/macOS
 4. Install dependencies:
 
 ```bash
-uv pip install -r requirements.txt
+uv sync
 ```
 
 ### Using pip
@@ -229,9 +282,26 @@ Total items found: 20
 
 Page 4:
 Found 20 items
-- pipe: (Qty: 1, Dim: 19ft 8 1/4 inch, Mount: -)
-- pipe: (Qty: 1, Dim: 14ft - 1 inch, Mount: -)
-- pipe: (Qty: 1, Dim: 9ft 0 1/8 inch, Mount: -)
+- pipe:  (Qty: 1, Dim: 19ft 8 1/4 inch, Mount: -)
+- pipe:  (Qty: 1, Dim: 14ft - 1 inch, Mount: -)
+- pipe:  (Qty: 1, Dim: 9ft 0 1/8 inch, Mount: -)
+- pipe:  (Qty: 1, Dim: 12ft - 9 inch, Mount: -)
+- pipe:  (Qty: 1, Dim: 12ft 8 3/4 inch, Mount: -)
+- pipe:  (Qty: 1, Dim: 19ft 3 3/4 inch, Mount: -)
+- pipe:  (Qty: 1, Dim: 19ft 3 1/4 inch, Mount: -)
+- pipe:  (Qty: 1, Dim: 25ft - 1 inch, Mount: -)
+- pipe:  (Qty: 1, Dim: 26ft 7 1/8 inch, Mount: -)
+- pipe:  (Qty: 1, Dim: 15ft 5 3/8 inch, Mount: -inch)
+- pipe:  (Qty: 2 1/2", Dim: 19ft 9 5/8 inch, Mount: -)
+- pipe:  (Qty: 2 1/2", Dim: 1ft 1 1/2 inch, Mount: -)
+- pipe:  (Qty: 18' -7 1/8", Dim: - inch, Mount: -)
+- pipe:  (Qty: 19' -3 1/4", Dim: 1 1/2 inch, Mount: -)
+- pipe:  (Qty: 19' -3 1/4", Dim: 4 inch, Mount: -)
+- pipe:  (Qty: 19' -3 1/4", Dim: 4ft 3 5/8 inch, Mount: -)
+- pipe:  (Qty: 16' -5 7/8", 17' -4", 18' -5 1/8", 19' -0 3/4", 20' -0 3/4", Dim: - inch, Mount: -)
+- pipe:  (Qty: 1, Dim: 3 - 2 inch, Mount: HH)
+- pipe:  (Qty: 1, Dim: 0 - 1 inch, Mount: CH)
+- pipe:  (Qty: 1, Dim: 1 1/2 inch, Mount: HH)
 ...
 ```
 
