@@ -114,6 +114,7 @@ class PDFExtractionChain:
    - Convert "N/A" or "(no quantity)" to "1" for quantity field
    - Separate model numbers from dimensions (e.g., "1 1/2"ø" should be split into model number and dimensions)
    - Handle "OM-" and "BC" model number prefixes
+   - Handle "HH" and "CH" mounting types
 
 2. Output Format:
    - Each item must be on a single line
@@ -146,7 +147,7 @@ class PDFExtractionChain:
       - If quantity is not a valid number, use "1"
 
    c) Model Number (third field):
-      - Must be one of: HHWS, HHWR, CWS, CWR, CHWS, CHWR, CD, M7, OM-*, BC *
+      - Must be one of: HHWS, HHWR, CWS, CWR, CHWS, CHWR, CD, M7, OM-*, BC *, HUH *
       - Extract from type field if present (e.g., "HHWS:" → "HHWS")
       - Remove any quotes or brackets
       - Remove any special characters
@@ -168,9 +169,10 @@ class PDFExtractionChain:
       - Always include "inch" suffix
       - If dimension is missing, use blank ("")
       - For multiple dimensions, use only the first one
+      - Never include mounting type in dimensions
 
    e) Mounting Type (fifth field):
-      - Format: "X ft - Y inch"
+      - Format: "X ft - Y inch" or "HH" or "CH"
       - Extract from BE= field if present
       - Remove "BE=" prefix
       - Convert " to "inch"
@@ -178,6 +180,7 @@ class PDFExtractionChain:
       - Always use "ft -" (with space and hyphen)
       - Keep fractions as is
       - Always include "inch" suffix
+      - Keep "HH" and "CH" as mounting types
       - If no mounting type, use blank ("")
       - For multiple mounting types, use only the first one
 
@@ -195,6 +198,7 @@ class PDFExtractionChain:
    - Never include dimension information in model number field
    - Never include model number information in dimension field
    - For multiple dimensions, use only the first one
+   - Keep "HH" and "CH" as mounting types
 
 5. General Rules:
    - Remove any empty fields (replace with blank "")
@@ -212,6 +216,7 @@ class PDFExtractionChain:
    - Keep model numbers and dimensions separate
    - Never mix model numbers with dimensions
    - For multiple dimensions, use only the first one
+   - Keep "HH" and "CH" as mounting types
 
 Text: {text}
 
