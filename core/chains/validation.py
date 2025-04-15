@@ -1,11 +1,11 @@
 from typing import List, Dict, Any
-from langchain.chains import LLMChain
-from langchain.prompts import PromptTemplate
+from langchain_core.prompts import PromptTemplate
 from langchain_community.llms import Ollama
 from langchain.memory import ConversationBufferMemory
-from langchain.output_parsers import PydanticOutputParser
-from langchain.callbacks.manager import CallbackManager
-from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
+from langchain_core.output_parsers import PydanticOutputParser
+from langchain_core.runnables import RunnableSequence
+from langchain_core.callbacks.manager import CallbackManager
+from langchain_core.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 
 from ..models.plumbing import PlumbingItem, PageData, ExtractionResult
 import re
@@ -101,12 +101,9 @@ Do not include any explanations or additional text.
 """
         )
         
-        # Create validation chain
-        self.validation_chain = LLMChain(
-            llm=self.llm,
-            prompt=self.validation_prompt,
-            memory=self.memory,
-            verbose=False
+        # Create validation chain using RunnableSequence
+        self.validation_chain = RunnableSequence(
+            self.validation_prompt | self.llm
         )
 
     def validate_items(self, items: List[PlumbingItem]) -> List[PlumbingItem]:
@@ -120,7 +117,7 @@ Do not include any explanations or additional text.
                 item_str = f"{item.type}|{item.quantity}|{item.model_number}|{item.dimensions}|{item.mounting_type or ''}"
                 
                 # Get validation response
-                response = self.validation_chain.run(item=item_str)
+                response = self.validation_chain.invoke({"item": item_str})
                 
                 # Parse the response
                 validated_item = self._parse_validation_response(response)
@@ -289,7 +286,7 @@ Do not include any explanations or additional text.
             elif field_type == "mounting":
                 item = f"pipe|1|HHWS|1 inch|{value}"
                 
-            response = self.validation_chain.run(item=item)
+            response = self.validation_chain.invoke({"item": item})
             standardized = response.split('|')[0 if field_type == "type" else 
                                             2 if field_type == "model" else 
                                             3 if field_type == "dimension" else 

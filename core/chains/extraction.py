@@ -99,24 +99,127 @@ class PDFExtractionChain:
         # Create extraction prompt
         self.extraction_prompt = PromptTemplate(
             input_variables=["text"],
-            template="""Extract plumbing information from this text. For each item, provide:
-            - type (pipe, fitting, valve, etc.)
-            - quantity (number)
-            - model_number (system code like HHWS, CWR)
-            - dimensions (size and length)
-            - mounting_type (if specified)
-            
-            Text: {text}
-            
-            Format each item as a simple line with fields separated by |:
-            type|quantity|model_number|dimensions|mounting_type
-            
-            Example:
-            pipe|2|HHWS|3/4 inch|25 ft -0 5/8
-            fitting|1|CD|1/2 inch|
-            
-            Now extract the plumbing information and return ONLY the items in this format:
-            """
+            template="""Extract plumbing information from this text. Follow these exact rules:
+
+1. Input Format Handling:
+   - If input uses ":" or "+" as separators, convert to pipe format
+   - If input has multiple lines per item, combine into single line
+   - If input has headers (e.g., "HHWS:", "Pipe type:"), extract relevant information
+   - Remove any bullet points (*) or other markers
+   - Remove any indentation or extra spaces
+   - Remove any trailing "mounting_type" text
+   - Handle "BE=" notation as mounting type
+   - Handle "HUH" and "BC" prefixes in model numbers
+   - Handle cases where model number and dimensions are mixed (e.g., "1 1/2"ø HHWR")
+   - Convert "N/A" or "(no quantity)" to "1" for quantity field
+   - Separate model numbers from dimensions (e.g., "1 1/2"ø" should be split into model number and dimensions)
+   - Handle "OM-" and "BC" model number prefixes
+
+2. Output Format:
+   - Each item must be on a single line
+   - Fields must be in this exact order: type|quantity|model_number|dimensions|mounting_type
+   - Fields must be separated by a single pipe character (|)
+   - No extra spaces around separators
+   - No headers or section numbers
+   - No empty lines between items
+   - Example: pipe|1|HHWS|1 1/2 inch|19 ft - 3 3/8 inch
+
+3. Field Rules:
+   a) Type (first field):
+      - Must be one of: pipe, valve, fitting, fixture, accessory
+      - If input starts with model number (e.g., "HHWS:"), extract type from context
+      - For items with "ø" symbol, use "pipe" as type
+      - Convert "Piping:" to "pipe"
+      - Convert "Valve Package:" to "valve"
+      - If type is missing, use "pipe" as default
+
+   b) Quantity (second field):
+      - Must be a number (default to "1" if not specified)
+      - Remove any special characters or units
+      - Convert to string format
+      - Convert "N/A" to "1"
+      - Convert "(no quantity)" to "1"
+      - Convert "quantity: N/A" to "1"
+      - Convert "-" to "1"
+      - Convert "2 1/2" to "2.5"
+      - If quantity is missing or empty, use "1"
+      - If quantity is not a valid number, use "1"
+
+   c) Model Number (third field):
+      - Must be one of: HHWS, HHWR, CWS, CWR, CHWS, CHWR, CD, M7, OM-*, BC *
+      - Extract from type field if present (e.g., "HHWS:" → "HHWS")
+      - Remove any quotes or brackets
+      - Remove any special characters
+      - Keep "HUH", "BC", and "OM-" prefixes in model numbers
+      - For mixed format (e.g., "1 1/2"ø HHWR"), extract only the model number (HHWR)
+      - Remove any dimension information from model number (e.g., "1 1/2"ø" should not be in model number)
+      - If model number is missing, use blank ("")
+
+   d) Dimensions (fourth field):
+      - Format: "X inch" or "X ft - Y inch"
+      - Extract from size field (e.g., "1 1/2"ø" → "1 1/2 inch")
+      - For mixed format (e.g., "1 1/2"ø HHWR"), extract only the dimension (1 1/2 inch)
+      - Remove "ø" symbol
+      - Convert "inches" to "inch"
+      - Convert " to "inch"
+      - Convert ' to "ft"
+      - Always use "ft -" (with space and hyphen)
+      - Keep fractions as is
+      - Always include "inch" suffix
+      - If dimension is missing, use blank ("")
+      - For multiple dimensions, use only the first one
+
+   e) Mounting Type (fifth field):
+      - Format: "X ft - Y inch"
+      - Extract from BE= field if present
+      - Remove "BE=" prefix
+      - Convert " to "inch"
+      - Convert ' to "ft"
+      - Always use "ft -" (with space and hyphen)
+      - Keep fractions as is
+      - Always include "inch" suffix
+      - If no mounting type, use blank ("")
+      - For multiple mounting types, use only the first one
+
+4. Special Cases:
+   - For items with multiple mounting types, use only the first one
+   - For items with combined types (e.g., "HWS & HWR"), create separate entries
+   - For items with model number in type field, extract to correct field
+   - For items with dimensions in mounting field, move to correct field
+   - For items with mounting in dimensions field, move to correct field
+   - Remove any trailing "mounting_type" text
+   - Keep "HUH", "BC", and "OM-" prefixes in model numbers
+   - Ensure consistent spacing in fractions (e.g., "3 3/8" not "3 3/8")
+   - For mixed format (e.g., "1 1/2"ø HHWR"), split into separate fields
+   - Always convert "N/A" or "(no quantity)" to "1" for quantity field
+   - Never include dimension information in model number field
+   - Never include model number information in dimension field
+   - For multiple dimensions, use only the first one
+
+5. General Rules:
+   - Remove any empty fields (replace with blank "")
+   - Remove any extra commas or separators
+   - Ensure consistent spacing around separators
+   - Do not include headers or section numbers
+   - Each item should be on a single line
+   - No trailing separators
+   - No empty lines between items
+   - No duplicate items
+   - Do not mix up field order
+   - Ensure consistent unit formatting
+   - Remove any trailing text after the last field
+   - Always convert "N/A" or "(no quantity)" to "1" for quantity field
+   - Keep model numbers and dimensions separate
+   - Never mix model numbers with dimensions
+   - For multiple dimensions, use only the first one
+
+Text: {text}
+
+Return ONLY the standardized items in this exact format:
+type|quantity|model_number|dimensions|mounting_type
+
+Do not include any explanations or additional text.
+"""
         )
         
         # Create extraction chain using RunnableSequence
@@ -176,10 +279,14 @@ class PDFExtractionChain:
         
         return all_items
 
-    def extract_from_pdf(self, pdf_path: str) -> ExtractionResult:
-        """Extract data from PDF using both pdfplumber and unstructured."""
+    def extract_from_pdf(self, pdf_path: str, target_page: int = 5) -> ExtractionResult:
+        """Extract data from PDF using both pdfplumber and unstructured.
+        
+        Args:
+            pdf_path: Path to the PDF file
+            target_page: Page number to process (1-based index). Defaults to 5.
+        """
         pages_data = []
-        target_page = 8
         
         print(f"\n=== Starting PDF Processing for Page {target_page} ===")
         

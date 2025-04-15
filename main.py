@@ -6,11 +6,23 @@ import pandas as pd
 from workflows.plumbing import run_workflow
 from core.models.plumbing import ExtractionResult
 
-def process_pdf(pdf_path: str, model_name: str = "llama3") -> ExtractionResult:
-    """Process a single PDF file using the plumbing workflow."""
+def get_pdf_page_count(pdf_path: str) -> int:
+    """Get the total number of pages in a PDF file."""
+    import pdfplumber
+    with pdfplumber.open(pdf_path) as pdf:
+        return len(pdf.pages)
+
+def process_pdf(pdf_path: str, model_name: str = "llama3", target_page: int | None = None) -> ExtractionResult:
+    """Process a single PDF file using the plumbing workflow.
+    
+    Args:
+        pdf_path: Path to the PDF file
+        model_name: Name of the LLM model to use
+        target_page: Page number to process (1-based index). If None, process all pages.
+    """
     print(f"\nProcessing {pdf_path}...")
     try:
-        result = run_workflow(pdf_path, model_name)
+        result = run_workflow(pdf_path, model_name, target_page)
         return result
     except Exception as e:
         print(f"Error processing {pdf_path}: {e}")
@@ -89,7 +101,40 @@ def main():
     for pdf_file in os.listdir(pdfs_dir):
         if pdf_file.endswith('.pdf'):
             pdf_path = os.path.join(pdfs_dir, pdf_file)
-            result = process_pdf(pdf_path, model_name)
+            
+            # Get total pages in the PDF
+            total_pages = get_pdf_page_count(pdf_path)
+            print(f"\nPDF: {pdf_file}")
+            print(f"Total pages: {total_pages}")
+            
+            # Ask user what to process
+            while True:
+                choice = input("\nDo you want to process:\n"
+                             "1. A specific page\n"
+                             "2. All pages\n"
+                             "3. Skip this PDF\n"
+                             "Enter your choice (1-3): ").strip()
+                
+                if choice == "1":
+                    while True:
+                        try:
+                            page_num = int(input(f"Enter page number (1-{total_pages}): "))
+                            if 1 <= page_num <= total_pages:
+                                result = process_pdf(pdf_path, model_name, page_num)
+                                break
+                            else:
+                                print(f"Please enter a number between 1 and {total_pages}")
+                        except ValueError:
+                            print("Please enter a valid number")
+                    break
+                elif choice == "2":
+                    result = process_pdf(pdf_path, model_name)
+                    break
+                elif choice == "3":
+                    print(f"Skipping {pdf_file}")
+                    continue
+                else:
+                    print("Invalid choice. Please enter 1, 2, or 3")
             
             if result is None:
                 print(f"Processing stopped for {pdf_file}")

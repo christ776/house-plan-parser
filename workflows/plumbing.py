@@ -2,6 +2,7 @@ from typing import Dict, Any, TypedDict, Annotated
 from langgraph.graph import Graph, StateGraph
 import gc
 import torch
+import pdfplumber
 
 from core.chains.extraction import PDFExtractionChain
 from core.chains.validation import ValidationChain
@@ -10,6 +11,7 @@ from core.models.plumbing import ExtractionResult
 class WorkflowState(TypedDict):
     """State for the plumbing data extraction workflow."""
     pdf_path: str
+    target_page: int | None
     extraction_result: ExtractionResult | None
     validation_result: ExtractionResult | None
     error: str | None
@@ -31,7 +33,20 @@ def create_plumbing_workflow(model_name: str = "llama3") -> Graph:
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
             
-            result = extraction_chain.extract_from_pdf(state["pdf_path"])
+            if state["target_page"] is None:
+                # Process all pages
+                with pdfplumber.open(state["pdf_path"]) as pdf:
+                    total_pages = len(pdf.pages)
+                    all_results = []
+                    for page_num in range(1, total_pages + 1):
+                        print(f"\nProcessing page {page_num} of {total_pages}...")
+                        result = extraction_chain.extract_from_pdf(state["pdf_path"], page_num)
+                        all_results.extend(result.pages)
+                    result = ExtractionResult(pages=all_results)
+            else:
+                # Process single page
+                result = extraction_chain.extract_from_pdf(state["pdf_path"], state["target_page"])
+            
             return {"extraction_result": result, "error": None, "retry_count": 0}
         except Exception as e:
             return {"error": str(e), "retry_count": state.get("retry_count", 0) + 1}
@@ -108,14 +123,21 @@ def create_plumbing_workflow(model_name: str = "llama3") -> Graph:
     # Compile workflow
     return workflow.compile()
 
-def run_workflow(pdf_path: str, model_name: str = "llama3") -> ExtractionResult:
-    """Run the plumbing data extraction workflow."""
+def run_workflow(pdf_path: str, model_name: str = "llama3", target_page: int = 5) -> ExtractionResult:
+    """Run the plumbing data extraction workflow.
+    
+    Args:
+        pdf_path: Path to the PDF file
+        model_name: Name of the LLM model to use
+        target_page: Page number to process (1-based index). Defaults to 5.
+    """
     # Create workflow
     workflow = create_plumbing_workflow(model_name)
     
     # Initialize state
     initial_state = WorkflowState(
         pdf_path=pdf_path,
+        target_page=target_page,
         extraction_result=None,
         validation_result=None,
         error=None,
