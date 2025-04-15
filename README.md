@@ -164,7 +164,7 @@ source .venv/bin/activate  # On Unix/macOS
 3. Install dependencies:
 
 ```bash
-pip install -r requirements.txt
+uv sync
 ```
 
 ### Dependencies
@@ -185,12 +185,59 @@ For development, install additional dependencies:
 uv pip install -r requirements-dev.txt
 ```
 
-### Configuration
+## Example Output
 
-The project can be configured through environment variables:
+### Processing Metrics
 
-```bash
-export MODEL_NAME="llama3"  # Default LLM model
-export MAX_CHUNK_SIZE=2000  # Maximum text chunk size
-export PARALLEL_PROCESSING=true  # Enable parallel processing
+The system provides detailed metrics about the processing performance:
+
 ```
+LLM Processing Metrics:
+Memory used: 0.12 MB
+CPU usage: 86.0%
+Time taken: 108.07 seconds
+
+=== PDF Processing Complete ===
+```
+
+### Extracted Data Examples
+
+The system extracts and standardizes plumbing information into a consistent format:
+
+```
+type|quantity|model_number|dimensions|mounting_type
+pipe|1|HHWS|19ft - 8 1/4 inch|-
+pipe|1|HHWS|14ft - 1 inch|-
+pipe|1|HHWS|9ft - 0 1/8 inch|-
+pipe|1|HHWS|12ft - 9 inch|-
+pipe|1|HHWS|12ft - 8 3/4 inch|-
+pipe|1|HHWS|19ft - 3 3/4 inch|-
+pipe|1|HHWS|19ft - 3 1/4 inch|-
+pipe|1|HHWS|25ft - 1 inch|-
+pipe|1|HHWS|26ft - 7 1/8 inch|-
+pipe|1|HHWS|15ft - 5 3/8 inch|-
+```
+
+### Summary Output
+
+The system generates a summary of the extracted data:
+
+```
+Extraction Summary for M&P mark-up against shop systems piping.pdf:
+Total pages processed: 1
+Total items found: 20
+
+Page 4:
+Found 20 items
+- pipe: (Qty: 1, Dim: 19ft 8 1/4 inch, Mount: -)
+- pipe: (Qty: 1, Dim: 14ft - 1 inch, Mount: -)
+- pipe: (Qty: 1, Dim: 9ft 0 1/8 inch, Mount: -)
+...
+```
+
+### Output Files
+
+The system generates two types of output files:
+
+1. `extracted_data/[filename]_extracted.json` - Detailed JSON data
+2. `extracted_data/[filename]_summary.csv` - Summary in CSV format
