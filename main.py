@@ -1,10 +1,14 @@
-# �� Imports
+# Imports
 import os
 import json
 from typing import List
 import pandas as pd
+import logging
 from workflows.plumbing import run_workflow
 from core.models.plumbing import ExtractionResult
+
+# Configure logging to suppress pdfplumber warnings
+logging.getLogger('pdfplumber').setLevel(logging.ERROR)
 
 def get_pdf_page_count(pdf_path: str) -> int:
     """Get the total number of pages in a PDF file."""
@@ -113,12 +117,13 @@ def main():
                              "1. A specific page\n"
                              "2. All pages\n"
                              "3. Skip this PDF\n"
-                             "Enter your choice (1-3): ").strip()
+                             "4. Quit\n"
+                             "Enter your choice (1-4): ").strip()
                 
                 if choice == "1":
                     while True:
                         try:
-                            page_num = int(input(f"Enter page number (1-{total_pages}): "))
+                            page_num = int(input(f"Enter page number (1-{total_pages}) or 'q' to quit: "))
                             if 1 <= page_num <= total_pages:
                                 result = process_pdf(pdf_path, model_name, page_num)
                                 break
@@ -133,8 +138,11 @@ def main():
                 elif choice == "3":
                     print(f"Skipping {pdf_file}")
                     continue
+                elif choice == "4":
+                    print("Quitting...")
+                    return
                 else:
-                    print("Invalid choice. Please enter 1, 2, or 3")
+                    print("Invalid choice. Please enter 1, 2, 3, or 4")
             
             if result is None:
                 print(f"Processing stopped for {pdf_file}")

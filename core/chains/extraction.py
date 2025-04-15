@@ -115,6 +115,9 @@ class PDFExtractionChain:
    - Separate model numbers from dimensions (e.g., "1 1/2"ø" should be split into model number and dimensions)
    - Handle "OM-" and "BC" model number prefixes
    - Handle "HH" and "CH" mounting types
+   - Handle combined types (e.g., "CHWS & CHWR" should create separate entries)
+   - Handle "UP TO" notation in mounting types
+   - Handle multiple mounting types (e.g., "BE= 19' -7 1/2", BE= 15' -3 1/4"")
 
 2. Output Format:
    - Each item must be on a single line
@@ -133,6 +136,7 @@ class PDFExtractionChain:
       - Convert "Piping:" to "pipe"
       - Convert "Valve Package:" to "valve"
       - If type is missing, use "pipe" as default
+      - For combined types (e.g., "CHWS & CHWR"), create separate entries for each type
 
    b) Quantity (second field):
       - Must be a number (default to "1" if not specified)
@@ -152,6 +156,7 @@ class PDFExtractionChain:
       - Remove any quotes or brackets
       - Remove any special characters
       - Keep "HUH", "BC", and "OM-" prefixes in model numbers
+      - For combined types (e.g., "CHWS & CHWR"), use appropriate model number for each entry
       - For mixed format (e.g., "1 1/2"ø HHWR"), extract only the model number (HHWR)
       - Remove any dimension information from model number (e.g., "1 1/2"ø" should not be in model number)
       - If model number is missing, use blank ("")
@@ -172,7 +177,7 @@ class PDFExtractionChain:
       - Never include mounting type in dimensions
 
    e) Mounting Type (fifth field):
-      - Format: "X ft - Y inch" or "HH" or "CH"
+      - Format: "X ft - Y inch" or "HH" or "CH" or "UP TO X"
       - Extract from BE= field if present
       - Remove "BE=" prefix
       - Convert " to "inch"
@@ -181,8 +186,9 @@ class PDFExtractionChain:
       - Keep fractions as is
       - Always include "inch" suffix
       - Keep "HH" and "CH" as mounting types
-      - If no mounting type, use blank ("")
+      - Handle "UP TO" notation (e.g., "UP TO MEZZANINE" → "UP TO MEZZANINE")
       - For multiple mounting types, use only the first one
+      - If no mounting type, use blank ("")
 
 4. Special Cases:
    - For items with multiple mounting types, use only the first one
@@ -199,6 +205,8 @@ class PDFExtractionChain:
    - Never include model number information in dimension field
    - For multiple dimensions, use only the first one
    - Keep "HH" and "CH" as mounting types
+   - Handle "UP TO" notation in mounting types
+   - Handle multiple mounting types by using the first one
 
 5. General Rules:
    - Remove any empty fields (replace with blank "")
@@ -217,6 +225,8 @@ class PDFExtractionChain:
    - Never mix model numbers with dimensions
    - For multiple dimensions, use only the first one
    - Keep "HH" and "CH" as mounting types
+   - Handle "UP TO" notation in mounting types
+   - Handle multiple mounting types by using the first one
             
             Text: {text}
             
